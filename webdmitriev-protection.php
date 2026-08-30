@@ -26,13 +26,48 @@ class WebDmitriev_Protection {
 
   private function __construct() {
     register_activation_hook(__FILE__, array($this, 'activate'));
+    register_deactivation_hook(__FILE__, array($this, 'deactivate'));
 
     add_action('admin_menu', array($this, 'add_admin_menu'));
     add_action('admin_post_wd_clear_logs', array($this, 'clear_logs'));
+    add_action('admin_post_wd_run_manual_scan', array($this, 'run_manual_scan'));
+    add_action('admin_post_wd_approve_hashes', array($this, 'approve_hashes'));
 
-    // Загрузка модуля защиты точек входа
+    // Загрузка модуля 1: Точки входа
     require_once WD_PROT_PATH . 'modules/entry-points.php';
     new WD_Protection_Entry_Points();
+
+    // Загрузка модуля 2: Защита файлов
+    require_once WD_PROT_PATH . 'modules/file-guard.php';
+    new WD_Protection_File_Guard();
+  }
+
+  public function deactivate() {
+    wp_clear_scheduled_hook('wd_daily_file_integrity_check');
+  }
+
+  // Добавляем обработчик ручного запуска сканирования
+  public function run_manual_scan() {
+    if (!current_user_can('manage_options') || !check_admin_referer('wd_scan_action', 'wd_scan_nonce')) {
+      wp_die('Доступ запрещен');
+    }
+
+    $file_guard = new WD_Protection_File_Guard();
+    $file_guard->run_daily_security_scan();
+
+    wp_redirect(admin_url('admin.php?page=webdmitriev-protection&scanned=1'));
+    exit;
+  }
+
+  public function approve_hashes() {
+    if (!current_user_can('manage_options') || !check_admin_referer('wd_approve_hashes_action', 'wd_approve_hashes_nonce')) {
+      wp_die('Доступ запрещен');
+    }
+
+    WD_Protection_File_Guard::approve_file_hashes();
+
+    wp_redirect(admin_url('admin.php?page=webdmitriev-protection&approved=1'));
+    exit;
   }
 
   public function activate() {
@@ -102,22 +137,56 @@ class WebDmitriev_Protection {
     global $wpdb;
     $table_name = $wpdb->prefix . 'wd_protection_logs';
     $logs = $wpdb->get_results("SELECT * FROM $table_name ORDER BY id DESC LIMIT 50");
+
+    $htaccess_changed = get_option('wd_prot_modified_root_htaccess');
+    $wpconfig_changed = get_option('wd_prot_modified_wp_config');
     ?>
     <div class="wrap">
       <h1>WebDmitriev Protection — Уведомления и Логи</h1>
 
-      <form method="post" action="<?php echo admin_url('admin-post.php'); ?>" style="margin-bottom: 20px;">
-        <input type="hidden" name="action" value="wd_clear_logs">
-        <?php wp_nonce_field('wd_clear_logs_action', 'wd_clear_logs_nonce'); ?>
-        <submit class="button button-secondary">Очистить лог</submit>
-      </form>
+      <?php if (isset($_GET['scanned'])): ?>
+        <div class="notice notice-success is-dismissible"><p>Сканирование файлов успешно завершено!</p></div>
+      <?php endif; ?>
 
+      <?php if (isset($_GET['approved'])): ?>
+        <div class="notice notice-success is-dismissible"><p>Новые версии файлов утверждены как эталонные!</p></div>
+      <?php endif; ?>
+
+      <?php if ($htaccess_changed || $wpconfig_changed): ?>
+        <div class="notice notice-warning" style="border-left-color: #ffb900; padding: 12px 15px;">
+          <p style="margin: 0 0 10px 0; font-size: 14px;">
+            <strong>⚠️ Зафиксированы изменения в критических файлах!</strong><br>
+            Если вы проводили запланированные работы по правке <code>.htaccess</code> или <code>wp-config.php</code>, нажмите кнопку ниже, чтобы утвердить их.
+          </p>
+          <form method="post" action="<?php echo admin_url('admin-post.php'); ?>">
+            <input type="hidden" name="action" value="wd_approve_hashes">
+            <?php wp_nonce_field('wd_approve_hashes_action', 'wd_approve_hashes_nonce'); ?>
+            <button type="submit" class="button button-primary">Принять текущие изменения как эталон</button>
+          </form>
+        </div>
+      <?php endif; ?>
+
+      <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <form method="post" action="<?php echo admin_url('admin-post.php'); ?>">
+          <input type="hidden" name="action" value="wd_run_manual_scan">
+          <?php wp_nonce_field('wd_scan_action', 'wd_scan_nonce'); ?>
+          <button type="submit" class="button button-secondary">Запустить сканирование файлов</button>
+        </form>
+
+        <form method="post" action="<?php echo admin_url('admin-post.php'); ?>">
+          <input type="hidden" name="action" value="wd_clear_logs">
+          <?php wp_nonce_field('wd_clear_logs_action', 'wd_clear_logs_nonce'); ?>
+          <button type="submit" class="button button-secondary">Очистить лог</button>
+        </form>
+      </div>
+
+      <!-- ТАБЛИЦА ЛОГОВ -->
       <table class="wp-list-table widefat fixed striped">
         <thead>
           <tr>
             <th style="width: 160px;">Дата</th>
             <th style="width: 100px;">Уровень</th>
-            <th style="width: 130px;">Тип</th>
+            <th style="width: 180px;">Тип</th>
             <th style="width: 130px;">IP-адрес</th>
             <th>Сообщение</th>
           </tr>
