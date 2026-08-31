@@ -56,17 +56,21 @@ class WebDmitriev_Protection {
     add_action('admin_post_wd_approve_hashes', array($this, 'approve_hashes'));
     add_action('admin_post_wd_save_blacklist', array($this, 'save_blacklist'));
 
-    // Загрузка модуля 1: Точки входа
+    // Загрузка модуля: Точки входа
     require_once WD_PROT_PATH . 'modules/entry-points.php';
     new WD_Protection_Entry_Points();
 
-    // Загрузка модуля 2: Защита файлов
+    // Загрузка модуля: Защита файлов
     require_once WD_PROT_PATH . 'modules/file-guard.php';
     new WD_Protection_File_Guard();
 
-    // Загрузка модуля 3: Firewall
+    // Загрузка модуля: Firewall
     require_once WD_PROT_PATH . 'modules/firewall.php';
     new WD_Protection_Firewall();
+
+    // Загрузка модуля: Widget
+    require_once plugin_dir_path(__FILE__) . 'modules/dashboard-widget.php';
+    new WD_Protection_Dashboard_Widget();
   }
 
   public function deactivate() {
