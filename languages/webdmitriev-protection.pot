@@ -1,0 +1,109 @@
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: WebDmitriev Protection\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-31 01:06+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: \n"
+"Language: \n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Loco https://localise.biz/\n"
+"X-Loco-Version: 2.8.8; wp-7.1; php-8.2.0\n"
+"X-Domain: webdmitriev-protection"
+
+#: admin/admin-page.php:51
+msgid "Accept current changes as a standard"
+msgstr ""
+
+#: admin/admin-page.php:105
+msgid "Blacklist of IP addresses (Firewall)"
+msgstr ""
+
+#: admin/admin-page.php:66
+msgid "Clear log"
+msgstr ""
+
+#: admin/admin-page.php:75
+msgid "Date"
+msgstr ""
+
+#: admin/admin-page.php:71
+msgid "Event and Threat Log"
+msgstr ""
+
+#: admin/admin-page.php:19
+msgid "File scan successfully completed!"
+msgstr ""
+
+#. 1: .htaccess file name, 2: wp-config.php file name
+#: admin/admin-page.php:42
+#, php-format
+msgid ""
+"If you have completed scheduled edits on %1$s or %2$s, please click the "
+"button below to approve them."
+msgstr ""
+
+#: admin/admin-page.php:78
+msgid "IP Address"
+msgstr ""
+
+#: admin/admin-page.php:79
+msgid "Message"
+msgstr ""
+
+#: admin/admin-page.php:25
+msgid "New versions of files have been approved as reference!"
+msgstr ""
+
+#: admin/admin-page.php:84
+msgid "No suspicious events recorded."
+msgstr ""
+
+#: admin/admin-page.php:114
+msgid "Save blacklist"
+msgstr ""
+
+#: admin/admin-page.php:76
+msgid "Severity"
+msgstr ""
+
+#: admin/admin-page.php:110
+msgid "Specify the IP addresses to block (each on a new line):"
+msgstr ""
+
+#: admin/admin-page.php:60
+msgid "Start scanning files"
+msgstr ""
+
+#: admin/admin-page.php:31
+msgid "The blacklist of IP addresses has been updated!"
+msgstr ""
+
+#: admin/admin-page.php:77
+msgid "Type"
+msgstr ""
+
+#. Author of the plugin
+msgid "webdmitriev"
+msgstr ""
+
+#. Name of the plugin
+msgid "WebDmitriev Protection"
+msgstr ""
+
+#: admin/admin-page.php:15
+msgid "WebDmitriev Protection — Notifications & Settings"
+msgstr ""
+
+#. Description of the plugin
+msgid "Легковесный модуль безопасности и защиты от атак."
+msgstr ""
+
+#: admin/admin-page.php:38
+msgid "⚠️ Changes have been recorded in critical files!"
+msgstr ""
