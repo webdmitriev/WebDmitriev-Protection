@@ -1,4 +1,10 @@
 <?php
+/**
+ * Application Firewall (WAF) module for WebDmitriev Protection.
+ *
+ * @package WebDmitriev_Protection
+ */
+
 if (!defined('ABSPATH')) {
   exit;
 }
@@ -6,124 +12,167 @@ if (!defined('ABSPATH')) {
 class WD_Protection_Firewall {
 
   public function __construct() {
-    // Запускаем файрвол на самом раннем этапе инициализации
+    // Run firewall at the earliest initialization stage.
     add_action('plugins_loaded', array($this, 'run_firewall'), 1);
 
-    // Отправляем заголовки безопасности
+    // Send HTTP security headers.
     add_action('send_headers', array($this, 'set_security_headers'));
   }
 
   /**
-   * Простановка заголовков безопасности HTTP
+   * Helper method to retrieve clean Remote IP Address.
+   *
+   * @return string
+   */
+  private function get_ip_address() {
+    return isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : '0.0.0.0';
+  }
+
+  /**
+   * Set HTTP security headers.
    */
   public function set_security_headers() {
-    if (headers_sent()) return;
+    if (headers_sent()) {
+      return;
+    }
 
-    // Защита от встраивания в iframe (кликджекинг)
+    // Protect against clickjacking (iframe embedding).
     header('X-Frame-Options: SAMEORIGIN');
-    // Запрет браузеру угадывать MIME-тип файла
+    // Prevent MIME-type sniffing.
     header('X-Content-Type-Options: nosniff');
-    // Защита от XSS на стороне браузера
+    // Enable browser XSS protection.
     header('X-XSS-Protection: 1; mode=block');
-    // Политика передачи Referrer
+    // Control referrer header privacy.
     header('Referrer-Policy: strict-origin-when-cross-origin');
   }
 
   /**
-   * Главная точка фильтрации входящего трафика
+   * Main entry point for filtering incoming traffic.
    */
   public function run_firewall() {
-    if (is_admin()) return; // Пропускаем проверку внутри админки
+    if (is_admin()) {
+      return; // Skip checks inside WordPress admin area.
+    }
 
-    $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    $ip = $this->get_ip_address();
 
-    // 1. Проверка черного списка IP
+    // 1. Check IP against blacklist.
     $this->check_ip_blacklist($ip);
 
-    // 2. Проверка вредоносного User-Agent
+    // 2. Check for malicious User-Agent.
     $this->check_user_agent($ip);
 
-    // 3. Базовая фильтрация SQLi / XSS в GET-запросах
+    // 3. Basic payload inspection for SQLi/XSS/Traversal in GET requests.
     $this->check_request_payload($ip);
   }
 
   /**
-   * Блокировка IP из черного списка
+   * Block requests from blacklisted IPs.
+   *
+   * @param string $ip Client IP address.
    */
   private function check_ip_blacklist($ip) {
     $blacklisted_ips = get_option('wd_prot_blacklisted_ips', array());
 
-    if (in_array($ip, $blacklisted_ips)) {
+    if (is_array($blacklisted_ips) && in_array($ip, $blacklisted_ips, true)) {
       WebDmitriev_Protection::log_event(
         'firewall_ip_blocked',
-        'Заблокирован доступ с IP из черного списка',
+        'Blocked access attempt from blacklisted IP address',
         $ip,
         'warning'
       );
-      $this->block_access('Доступ с вашего IP-адреса ограничен.');
+
+      $this->block_access(__('Access from your IP address has been restricted.', 'webdmitriev-protection'));
     }
   }
 
   /**
-   * Проверка ботов по сигнатурам User-Agent
+   * Check for suspicious/malicious User-Agent signatures.
+   *
+   * @param string $ip Client IP address.
    */
   private function check_user_agent($ip) {
-    $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_USER_AGENT'])) : '';
 
-    if (empty($user_agent)) return;
+    if (empty($user_agent)) {
+      return;
+    }
 
-    // Распространенные вредоносные сканеры и хакерские утилиты
+    // Known scanner signatures and hacking utilities.
     $bad_bots = array(
       'sqlmap', 'nikto', 'netsparker', 'dirbuster', 'nmap',
       'absinthe', 'masscan', 'havij', 'w3af', 'zgrab'
     );
 
     foreach ($bad_bots as $bot) {
-      if (stripos($user_agent, $bot) !== false) {
+      if (false !== stripos($user_agent, $bot)) {
         WebDmitriev_Protection::log_event(
           'firewall_bot_blocked',
-          sprintf('Заблокирован вредоносный бот/сканер: %s', sanitize_text_field($user_agent)),
+          sprintf(
+            /* translators: %s: Malicious User-Agent string */
+            __('Blocked malicious bot/scanner signature: %s', 'webdmitriev-protection'),
+            $user_agent
+          ),
           $ip,
           'critical'
         );
-        $this->block_access('Доступ запрещен.');
+
+        $this->block_access(__('Access denied by security firewall.', 'webdmitriev-protection'));
       }
     }
   }
 
   /**
-   * Анализ параметров URI и GET на наличие атак
+   * Analyze URI payload for common injection/traversal patterns.
+   *
+   * @param string $ip Client IP address.
    */
   private function check_request_payload($ip) {
-    $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+    $raw_uri    = isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '';
+    $request_uri = urldecode($raw_uri);
 
-    // Набор опасных шаблонов (SQLi, Directory Traversal, XSS)
+    if (empty($request_uri)) {
+      return;
+    }
+
+    // Dangerous signatures (SQLi, Directory Traversal, XSS, Global modifications).
     $dangerous_patterns = array(
       '/union\s+select/i',
       '/base64_decode/i',
-      '/\.\.\/\.\.\//', // Попытка выхода из директории (../../)
+      '/\.\.\/\.\.\//',
       '/<script.*?>/i',
       '/GLOBALS\s*=\s*\[/i',
       '/_REQUEST\s*=\s*\[/i'
     );
 
     foreach ($dangerous_patterns as $pattern) {
-      if (preg_match($pattern, urldecode($request_uri))) {
+      if (preg_match($pattern, $request_uri)) {
         WebDmitriev_Protection::log_event(
           'firewall_attack_blocked',
-          sprintf('Заблокирована попытка атаки в URL: %s', sanitize_text_field($request_uri)),
+          sprintf(
+            /* translators: %s: Suspicious URI payload */
+            __('Blocked attack attempt in request URL: %s', 'webdmitriev-protection'),
+            $raw_uri
+          ),
           $ip,
           'critical'
         );
-        $this->block_access('Запрос заблокирован системой безопасности.');
+
+        $this->block_access(__('Request blocked by security firewall.', 'webdmitriev-protection'));
       }
     }
   }
 
   /**
-   * Прерывание выполнения и высылка 403 ошибки
+   * Terminate script execution with a 403 HTTP status.
+   *
+   * @param string $reason Localized error message to display.
    */
   private function block_access($reason) {
-    wp_die($reason, 'Access Denied', array('response' => 403));
+    wp_die(
+      esc_html($reason),
+      esc_html__('Access Denied', 'webdmitriev-protection'),
+      array('response' => 403)
+    );
   }
 }
