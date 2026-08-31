@@ -4,11 +4,31 @@
  * Description: Легковесный модуль безопасности и защиты от атак.
  * Version: 1.0.0
  * Author: webdmitriev
+ * License: GPLv2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
+ * Text Domain: webdmitriev-protection
  */
 
 if (!defined('ABSPATH')) {
   exit;
 }
+
+/*  Copyright (C) 2026 webdmitriev
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+*/
 
 define('WD_PROT_PATH', plugin_dir_path(__FILE__));
 define('WD_PROT_VERSION', '1.0.0');
@@ -51,7 +71,6 @@ class WebDmitriev_Protection {
     wp_clear_scheduled_hook('wd_daily_file_integrity_check');
   }
 
-  // Добавляем обработчик ручного запуска сканирования
   public function run_manual_scan() {
     if (!current_user_can('manage_options') || !check_admin_referer('wd_scan_action', 'wd_scan_nonce')) {
       wp_die('Доступ запрещен');
@@ -80,7 +99,7 @@ class WebDmitriev_Protection {
       wp_die('Доступ запрещен');
     }
 
-    $raw_ips = isset($_POST['blacklisted_ips']) ? sanitize_textarea_field($_POST['blacklisted_ips']) : '';
+    $raw_ips = isset($_POST['blacklisted_ips']) ? sanitize_textarea_field(wp_unslash($_POST['blacklisted_ips'])) : '';
     $ip_array = array_filter(array_map('trim', explode("\n", $raw_ips)));
 
     // Валидация IP-адресов
@@ -121,7 +140,7 @@ class WebDmitriev_Protection {
     $table_name = $wpdb->prefix . 'wd_protection_logs';
 
     if (empty($ip)) {
-      $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+      $ip = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : '0.0.0.0';
     }
 
     $wpdb->insert(
@@ -136,10 +155,8 @@ class WebDmitriev_Protection {
 
     // Отправка критических уведомлений на email админа
     if ($severity === 'critical') {
-      // Ключ для защиты от спама одинаковыми письмами с одного IP
       $transient_key = 'wd_prot_mail_' . md5($type . $ip);
 
-      // Если аналогичное письмо отправлялось меньше 15 минут назад — пропускаем отправку
       if (!get_transient($transient_key)) {
         $admin_email = get_option('admin_email');
         $subject = '[' . get_bloginfo('name') . '] Критическая угроза безопасности: ' . $type;
@@ -152,7 +169,6 @@ class WebDmitriev_Protection {
         $body .= "Подробнее в панеле управления: " . admin_url('admin.php?page=webdmitriev-protection');
 
         if (wp_mail($admin_email, $subject, $body)) {
-          // Блокируем отправку дубликатов писем по этому событию на 15 минут (900 секунд)
           set_transient($transient_key, true, 900);
         }
       }
@@ -179,13 +195,11 @@ class WebDmitriev_Protection {
     global $wpdb;
     $table_name = $wpdb->prefix . 'wd_protection_logs';
 
-    // Подготовка данных для View
     $logs = $wpdb->get_results("SELECT * FROM {$table_name} ORDER BY id DESC LIMIT 50");
     $htaccess_changed = get_option('wd_prot_modified_root_htaccess');
     $wpconfig_changed = get_option('wd_prot_modified_wp_config');
     $blacklisted_ips  = get_option('wd_prot_blacklisted_ips', array());
 
-    // Подключение View-файла
     require_once WD_PROT_PATH . 'admin/admin-page.php';
   }
 
