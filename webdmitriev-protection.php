@@ -136,15 +136,26 @@ class WebDmitriev_Protection {
 
     // Отправка критических уведомлений на email админа
     if ($severity === 'critical') {
-      $admin_email = get_option('admin_email');
-      $subject = '[' . get_bloginfo('name') . '] Критическая угроза безопасности';
-      $body = "Зафиксирована подозрительная активность:\n\n";
-      $body .= "Тип: {$type}\n";
-      $body .= "IP: {$ip}\n";
-      $body .= "Детали: {$message}\n";
-      $body .= "Дата: " . current_time('mysql') . "\n";
+      // Ключ для защиты от спама одинаковыми письмами с одного IP
+      $transient_key = 'wd_prot_mail_' . md5($type . $ip);
 
-      wp_mail($admin_email, $subject, $body);
+      // Если аналогичное письмо отправлялось меньше 15 минут назад — пропускаем отправку
+      if (!get_transient($transient_key)) {
+        $admin_email = get_option('admin_email');
+        $subject = '[' . get_bloginfo('name') . '] Критическая угроза безопасности: ' . $type;
+
+        $body = "Зафиксирована критическая угроза безопасности:\n\n";
+        $body .= "Тип события: {$type}\n";
+        $body .= "IP-адрес: {$ip}\n";
+        $body .= "Дата и время: " . current_time('mysql') . "\n";
+        $body .= "Детали: {$message}\n\n";
+        $body .= "Подробнее в панеле управления: " . admin_url('admin.php?page=webdmitriev-protection');
+
+        if (wp_mail($admin_email, $subject, $body)) {
+          // Блокируем отправку дубликатов писем по этому событию на 15 минут (900 секунд)
+          set_transient($transient_key, true, 900);
+        }
+      }
     }
   }
 
