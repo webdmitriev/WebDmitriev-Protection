@@ -14,19 +14,19 @@ if (!defined('ABSPATH')) {
 <div class="wrap">
   <h1><?php esc_html_e('WebDmitriev Protection — Notifications & Settings', 'webdmitriev-protection'); ?></h1>
 
-  <?php if (isset($_GET['scanned'])): ?>
+  <?php if (isset($_GET['scanned']) && '1' === $_GET['scanned']): ?>
     <div class="notice notice-success is-dismissible">
       <p><?php esc_html_e('File scan successfully completed!', 'webdmitriev-protection'); ?></p>
     </div>
   <?php endif; ?>
 
-  <?php if (isset($_GET['approved'])): ?>
+  <?php if (isset($_GET['approved']) && '1' === $_GET['approved']): ?>
     <div class="notice notice-success is-dismissible">
       <p><?php esc_html_e('New versions of files have been approved as reference!', 'webdmitriev-protection'); ?></p>
     </div>
   <?php endif; ?>
 
-  <?php if (isset($_GET['saved_ips'])): ?>
+  <?php if (isset($_GET['saved_ips']) && '1' === $_GET['saved_ips']): ?>
     <div class="notice notice-success is-dismissible">
       <p><?php esc_html_e('The blacklist of IP addresses has been updated!', 'webdmitriev-protection'); ?></p>
     </div>
@@ -72,10 +72,10 @@ if (!defined('ABSPATH')) {
   <table class="wp-list-table widefat fixed striped" style="margin-bottom: 30px;">
     <thead>
       <tr>
-        <th><?php esc_html_e('Date', 'webdmitriev-protection'); ?></th>
-        <th><?php esc_html_e('Severity', 'webdmitriev-protection'); ?></th>
-        <th><?php esc_html_e('Type', 'webdmitriev-protection'); ?></th>
-        <th><?php esc_html_e('IP Address', 'webdmitriev-protection'); ?></th>
+        <th style="width: 160px;"><?php esc_html_e('Date', 'webdmitriev-protection'); ?></th>
+        <th style="width: 100px;"><?php esc_html_e('Severity', 'webdmitriev-protection'); ?></th>
+        <th style="width: 180px;"><?php esc_html_e('Type', 'webdmitriev-protection'); ?></th>
+        <th style="width: 130px;"><?php esc_html_e('IP Address', 'webdmitriev-protection'); ?></th>
         <th><?php esc_html_e('Message', 'webdmitriev-protection'); ?></th>
       </tr>
     </thead>
@@ -108,7 +108,7 @@ if (!defined('ABSPATH')) {
     <?php wp_nonce_field('wd_save_blacklist_action', 'wd_save_blacklist_nonce'); ?>
 
     <p><?php esc_html_e('Specify the IP addresses to block (each on a new line):', 'webdmitriev-protection'); ?></p>
-    <textarea name="blacklisted_ips" rows="5" class="large-text code"><?php echo esc_textarea(implode("\n", $blacklisted_ips)); ?></textarea>
+    <textarea name="blacklisted_ips" rows="5" class="large-text code"><?php echo esc_textarea(implode("\n", is_array($blacklisted_ips) ? $blacklisted_ips : array())); ?></textarea>
 
     <p style="margin-top: 10px;">
       <button type="submit" class="button button-primary"><?php esc_html_e('Save blacklist', 'webdmitriev-protection'); ?></button>

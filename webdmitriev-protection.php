@@ -1,12 +1,13 @@
 <?php
 /**
  * Plugin Name: WebDmitriev Protection
- * Description: Легковесный модуль безопасности и защиты от атак.
+ * Description: Lightweight security and attack protection module.
  * Version: 1.0.0
  * Author: webdmitriev
  * License: GPLv2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: webdmitriev-protection
+ * Domain Path: /languages
  */
 
 if (!defined('ABSPATH')) {
@@ -48,8 +49,8 @@ class WebDmitriev_Protection {
     register_activation_hook(__FILE__, array($this, 'activate'));
     register_deactivation_hook(__FILE__, array($this, 'deactivate'));
 
-    add_action('admin_menu', array($this, 'add_admin_menu'));
     add_action('plugins_loaded', array($this, 'load_textdomain'));
+    add_action('admin_menu', array($this, 'add_admin_menu'));
     add_action('admin_post_wd_clear_logs', array($this, 'clear_logs'));
     add_action('admin_post_wd_run_manual_scan', array($this, 'run_manual_scan'));
     add_action('admin_post_wd_approve_hashes', array($this, 'approve_hashes'));
@@ -74,7 +75,7 @@ class WebDmitriev_Protection {
 
   public function run_manual_scan() {
     if (!current_user_can('manage_options') || !check_admin_referer('wd_scan_action', 'wd_scan_nonce')) {
-      wp_die('Доступ запрещен');
+      wp_die(esc_html__('Access denied.', 'webdmitriev-protection'));
     }
 
     $file_guard = new WD_Protection_File_Guard();
@@ -86,7 +87,7 @@ class WebDmitriev_Protection {
 
   public function approve_hashes() {
     if (!current_user_can('manage_options') || !check_admin_referer('wd_approve_hashes_action', 'wd_approve_hashes_nonce')) {
-      wp_die('Доступ запрещен');
+      wp_die(esc_html__('Access denied.', 'webdmitriev-protection'));
     }
 
     WD_Protection_File_Guard::approve_file_hashes();
@@ -97,7 +98,7 @@ class WebDmitriev_Protection {
 
   public function save_blacklist() {
     if (!current_user_can('manage_options') || !check_admin_referer('wd_save_blacklist_action', 'wd_save_blacklist_nonce')) {
-      wp_die('Доступ запрещен');
+      wp_die(esc_html__('Access denied.', 'webdmitriev-protection'));
     }
 
     $raw_ips = isset($_POST['blacklisted_ips']) ? sanitize_textarea_field(wp_unslash($_POST['blacklisted_ips'])) : '';
@@ -160,14 +161,20 @@ class WebDmitriev_Protection {
 
       if (!get_transient($transient_key)) {
         $admin_email = get_option('admin_email');
-        $subject = '[' . get_bloginfo('name') . '] Критическая угроза безопасности: ' . $type;
+        
+        /* translators: 1: Site name, 2: Event type */
+        $subject = sprintf(
+          __('[%1$s] Critical Security Threat: %2$s', 'webdmitriev-protection'),
+          get_bloginfo('name'),
+          $type
+        );
 
-        $body = "Зафиксирована критическая угроза безопасности:\n\n";
-        $body .= "Тип события: {$type}\n";
-        $body .= "IP-адрес: {$ip}\n";
-        $body .= "Дата и время: " . current_time('mysql') . "\n";
-        $body .= "Детали: {$message}\n\n";
-        $body .= "Подробнее в панеле управления: " . admin_url('admin.php?page=webdmitriev-protection');
+        $body  = __("A critical security threat has been recorded:\n\n", 'webdmitriev-protection');
+        $body .= sprintf(__("Event Type: %s\n", 'webdmitriev-protection'), $type);
+        $body .= sprintf(__("IP Address: %s\n", 'webdmitriev-protection'), $ip);
+        $body .= sprintf(__("Date and Time: %s\n", 'webdmitriev-protection'), current_time('mysql'));
+        $body .= sprintf(__("Details: %s\n\n", 'webdmitriev-protection'), $message);
+        $body .= sprintf(__("More details in the dashboard: %s", 'webdmitriev-protection'), admin_url('admin.php?page=webdmitriev-protection'));
 
         if (wp_mail($admin_email, $subject, $body)) {
           set_transient($transient_key, true, 900);
@@ -178,8 +185,8 @@ class WebDmitriev_Protection {
 
   public function add_admin_menu() {
     add_menu_page(
-      'WD Protection',
-      'WD Protection',
+      __('WD Protection', 'webdmitriev-protection'),
+      __('WD Protection', 'webdmitriev-protection'),
       'manage_options',
       'webdmitriev-protection',
       array($this, 'render_admin_page'),
@@ -206,12 +213,12 @@ class WebDmitriev_Protection {
 
   public function clear_logs() {
     if (!current_user_can('manage_options') || !check_admin_referer('wd_clear_logs_action', 'wd_clear_logs_nonce')) {
-      wp_die('Доступ запрещен');
+      wp_die(esc_html__('Access denied.', 'webdmitriev-protection'));
     }
 
     global $wpdb;
     $table_name = $wpdb->prefix . 'wd_protection_logs';
-    $wpdb->query("TRUNCATE TABLE $table_name");
+    $wpdb->query("TRUNCATE TABLE {$table_name}");
 
     wp_redirect(admin_url('admin.php?page=webdmitriev-protection'));
     exit;
