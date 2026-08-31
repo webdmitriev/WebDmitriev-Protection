@@ -49,6 +49,7 @@ class WebDmitriev_Protection {
     register_deactivation_hook(__FILE__, array($this, 'deactivate'));
 
     add_action('admin_menu', array($this, 'add_admin_menu'));
+    add_action('plugins_loaded', array($this, 'load_textdomain'));
     add_action('admin_post_wd_clear_logs', array($this, 'clear_logs'));
     add_action('admin_post_wd_run_manual_scan', array($this, 'run_manual_scan'));
     add_action('admin_post_wd_approve_hashes', array($this, 'approve_hashes'));
@@ -214,6 +215,14 @@ class WebDmitriev_Protection {
 
     wp_redirect(admin_url('admin.php?page=webdmitriev-protection'));
     exit;
+  }
+
+  public function load_textdomain() {
+    load_plugin_textdomain(
+      'webdmitriev-protection',
+      false,
+      dirname(plugin_basename(__FILE__)) . '/languages'
+    );
   }
 }
 
