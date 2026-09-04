@@ -8,6 +8,8 @@
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: webdmitriev-protection
  * Domain Path: /languages
+ *
+ * @package WebDmitriev_Protection
  */
 
 if (!defined('ABSPATH')) {
@@ -31,13 +33,23 @@ if (!defined('ABSPATH')) {
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-define('WD_PROT_PATH', plugin_dir_path(__FILE__));
-define('WD_PROT_VERSION', '1.0.0');
+define('WEBDMITRIEV_PROTECTION_PATH', plugin_dir_path(__FILE__));
+define('WEBDMITRIEV_PROTECTION_VERSION', '1.0.0');
 
 class WebDmitriev_Protection {
 
+  /**
+   * Instance object.
+   *
+   * @var WebDmitriev_Protection|null
+   */
   private static $instance = null;
 
+  /**
+   * Get singleton instance.
+   *
+   * @return WebDmitriev_Protection
+   */
   public static function get_instance() {
     if (null === self::$instance) {
       self::$instance = new self();
@@ -49,40 +61,38 @@ class WebDmitriev_Protection {
     register_activation_hook(__FILE__, array($this, 'activate'));
     register_deactivation_hook(__FILE__, array($this, 'deactivate'));
 
-    add_action('plugins_loaded', array($this, 'load_textdomain'));
     add_action('admin_menu', array($this, 'add_admin_menu'));
-    add_action('admin_post_wd_clear_logs', array($this, 'clear_logs'));
-    add_action('admin_post_wd_run_manual_scan', array($this, 'run_manual_scan'));
-    add_action('admin_post_wd_approve_hashes', array($this, 'approve_hashes'));
-    add_action('admin_post_wd_save_blacklist', array($this, 'save_blacklist'));
+    
+    // Prefixed admin_post actions
+    add_action('admin_post_webdmitriev_protection_clear_logs', array($this, 'clear_logs'));
+    add_action('admin_post_webdmitriev_protection_run_manual_scan', array($this, 'run_manual_scan'));
+    add_action('admin_post_webdmitriev_protection_approve_hashes', array($this, 'approve_hashes'));
+    add_action('admin_post_webdmitriev_protection_save_blacklist', array($this, 'save_blacklist'));
 
-    // Загрузка модуля: Точки входа
-    require_once WD_PROT_PATH . 'modules/entry-points.php';
-    new WD_Protection_Entry_Points();
+    // Modules loading
+    require_once WEBDMITRIEV_PROTECTION_PATH . 'modules/entry-points.php';
+    new WebDmitriev_Protection_Entry_Points();
 
-    // Загрузка модуля: Защита файлов
-    require_once WD_PROT_PATH . 'modules/file-guard.php';
-    new WD_Protection_File_Guard();
+    require_once WEBDMITRIEV_PROTECTION_PATH . 'modules/file-guard.php';
+    new WebDmitriev_Protection_File_Guard();
 
-    // Загрузка модуля: Firewall
-    require_once WD_PROT_PATH . 'modules/firewall.php';
-    new WD_Protection_Firewall();
+    require_once WEBDMITRIEV_PROTECTION_PATH . 'modules/firewall.php';
+    new WebDmitriev_Protection_Firewall();
 
-    // Загрузка модуля: Widget
-    require_once plugin_dir_path(__FILE__) . 'modules/dashboard-widget.php';
-    new WD_Protection_Dashboard_Widget();
+    require_once WEBDMITRIEV_PROTECTION_PATH . 'modules/dashboard-widget.php';
+    new WebDmitriev_Protection_Dashboard_Widget();
   }
 
   public function deactivate() {
-    wp_clear_scheduled_hook('wd_daily_file_integrity_check');
+    wp_clear_scheduled_hook('webdmitriev_protection_daily_file_integrity_check');
   }
 
   public function run_manual_scan() {
-    if (!current_user_can('manage_options') || !check_admin_referer('wd_scan_action', 'wd_scan_nonce')) {
+    if (!current_user_can('manage_options') || !check_admin_referer('webdmitriev_protection_scan_action', 'webdmitriev_protection_scan_nonce')) {
       wp_die(esc_html__('Access denied.', 'webdmitriev-protection'));
     }
 
-    $file_guard = new WD_Protection_File_Guard();
+    $file_guard = new WebDmitriev_Protection_File_Guard();
     $file_guard->run_daily_security_scan();
 
     wp_redirect(admin_url('admin.php?page=webdmitriev-protection&scanned=1'));
@@ -90,25 +100,25 @@ class WebDmitriev_Protection {
   }
 
   public function approve_hashes() {
-    if (!current_user_can('manage_options') || !check_admin_referer('wd_approve_hashes_action', 'wd_approve_hashes_nonce')) {
+    if (!current_user_can('manage_options') || !check_admin_referer('webdmitriev_protection_approve_hashes_action', 'webdmitriev_protection_approve_hashes_nonce')) {
       wp_die(esc_html__('Access denied.', 'webdmitriev-protection'));
     }
 
-    WD_Protection_File_Guard::approve_file_hashes();
+    WebDmitriev_Protection_File_Guard::approve_file_hashes();
 
     wp_redirect(admin_url('admin.php?page=webdmitriev-protection&approved=1'));
     exit;
   }
 
   public function save_blacklist() {
-    if (!current_user_can('manage_options') || !check_admin_referer('wd_save_blacklist_action', 'wd_save_blacklist_nonce')) {
+    if (!current_user_can('manage_options') || !check_admin_referer('webdmitriev_protection_save_blacklist_action', 'webdmitriev_protection_save_blacklist_nonce')) {
       wp_die(esc_html__('Access denied.', 'webdmitriev-protection'));
     }
 
-    $raw_ips = isset($_POST['blacklisted_ips']) ? sanitize_textarea_field(wp_unslash($_POST['blacklisted_ips'])) : '';
+    $raw_ips  = isset($_POST['blacklisted_ips']) ? sanitize_textarea_field(wp_unslash($_POST['blacklisted_ips'])) : '';
     $ip_array = array_filter(array_map('trim', explode("\n", $raw_ips)));
 
-    // Валидация IP-адресов
+    // IP Validation
     $clean_ips = array();
     foreach ($ip_array as $ip) {
       if (filter_var($ip, FILTER_VALIDATE_IP)) {
@@ -116,7 +126,7 @@ class WebDmitriev_Protection {
       }
     }
 
-    update_option('wd_prot_blacklisted_ips', $clean_ips);
+    update_option('webdmitriev_protection_blacklisted_ips', $clean_ips);
 
     wp_redirect(admin_url('admin.php?page=webdmitriev-protection&saved_ips=1'));
     exit;
@@ -124,10 +134,10 @@ class WebDmitriev_Protection {
 
   public function activate() {
     global $wpdb;
-    $table_name = $wpdb->prefix . 'wd_protection_logs';
+    $table_name      = $wpdb->base_prefix . 'webdmitriev_protection_logs';
     $charset_collate = $wpdb->get_charset_collate();
 
-    $sql = "CREATE TABLE IF NOT EXISTS $table_name (
+    $sql = "CREATE TABLE IF NOT EXISTS {$table_name} (
       id bigint(20) NOT NULL AUTO_INCREMENT,
       created_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
       event_type varchar(50) NOT NULL,
@@ -135,15 +145,15 @@ class WebDmitriev_Protection {
       ip_address varchar(45) NOT NULL,
       message text NOT NULL,
       PRIMARY KEY  (id)
-    ) $charset_collate;";
+    ) {$charset_collate};";
 
-    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
     dbDelta($sql);
   }
 
   public static function log_event($type, $message, $ip = '', $severity = 'warning') {
     global $wpdb;
-    $table_name = $wpdb->prefix . 'wd_protection_logs';
+    $table_name = $wpdb->base_prefix . 'webdmitriev_protection_logs';
 
     if (empty($ip)) {
       $ip = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : '0.0.0.0';
@@ -159,13 +169,13 @@ class WebDmitriev_Protection {
       )
     );
 
-    // Отправка критических уведомлений на email админа
-    if ($severity === 'critical') {
-      $transient_key = 'wd_prot_mail_' . md5($type . $ip);
+    // Send critical alert notification
+    if ('critical' === $severity) {
+      $transient_key = 'webdmitriev_protection_mail_' . md5($type . $ip);
 
       if (!get_transient($transient_key)) {
         $admin_email = get_option('admin_email');
-        
+
         /* translators: 1: Site name, 2: Event type */
         $subject = sprintf(
           __('[%1$s] Critical Security Threat: %2$s', 'webdmitriev-protection'),
@@ -197,6 +207,15 @@ class WebDmitriev_Protection {
       'dashicons-shield',
       80
     );
+
+    add_submenu_page(
+      'webdmitriev-protection',
+      __('Security Logs', 'webdmitriev-protection'),
+      __('Security Logs', 'webdmitriev-protection'),
+      'manage_options',
+      'webdmitriev-protection-logs',
+      array($this, 'render_admin_page')
+    );
   }
 
   public function render_admin_page() {
@@ -205,35 +224,29 @@ class WebDmitriev_Protection {
     }
 
     global $wpdb;
-    $table_name = $wpdb->prefix . 'wd_protection_logs';
+    $table_name = $wpdb->base_prefix . 'webdmitriev_protection_logs';
 
-    $logs = $wpdb->get_results("SELECT * FROM {$table_name} ORDER BY id DESC LIMIT 50");
-    $htaccess_changed = get_option('wd_prot_modified_root_htaccess');
-    $wpconfig_changed = get_option('wd_prot_modified_wp_config');
-    $blacklisted_ips  = get_option('wd_prot_blacklisted_ips', array());
+    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+    $logs             = $wpdb->get_results("SELECT * FROM {$table_name} ORDER BY id DESC LIMIT 50");
+    $htaccess_changed = get_option('webdmitriev_protection_modified_root_htaccess');
+    $wpconfig_changed = get_option('webdmitriev_protection_modified_wp_config');
+    $blacklisted_ips  = get_option('webdmitriev_protection_blacklisted_ips', array());
 
-    require_once WD_PROT_PATH . 'admin/admin-page.php';
+    require_once WEBDMITRIEV_PROTECTION_PATH . 'admin/admin-page.php';
   }
 
   public function clear_logs() {
-    if (!current_user_can('manage_options') || !check_admin_referer('wd_clear_logs_action', 'wd_clear_logs_nonce')) {
+    if (!current_user_can('manage_options') || !check_admin_referer('webdmitriev_protection_clear_logs_action', 'webdmitriev_protection_clear_logs_nonce')) {
       wp_die(esc_html__('Access denied.', 'webdmitriev-protection'));
     }
 
     global $wpdb;
-    $table_name = $wpdb->prefix . 'wd_protection_logs';
+    $table_name = $wpdb->base_prefix . 'webdmitriev_protection_logs';
+    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
     $wpdb->query("TRUNCATE TABLE {$table_name}");
 
     wp_redirect(admin_url('admin.php?page=webdmitriev-protection'));
     exit;
-  }
-
-  public function load_textdomain() {
-    load_plugin_textdomain(
-      'webdmitriev-protection',
-      false,
-      dirname(plugin_basename(__FILE__)) . '/languages'
-    );
   }
 }
 

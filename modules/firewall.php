@@ -9,7 +9,7 @@ if (!defined('ABSPATH')) {
   exit;
 }
 
-class WD_Protection_Firewall {
+class WebDmitriev_Protection_Firewall {
 
   public function __construct() {
     // Run firewall at the earliest initialization stage.
@@ -72,7 +72,7 @@ class WD_Protection_Firewall {
    * @param string $ip Client IP address.
    */
   private function check_ip_blacklist($ip) {
-    $blacklisted_ips = get_option('wd_prot_blacklisted_ips', array());
+    $blacklisted_ips = get_option('webdmitriev_protection_blacklisted_ips', array());
 
     if (is_array($blacklisted_ips) && in_array($ip, $blacklisted_ips, true)) {
       WebDmitriev_Protection::log_event(
@@ -101,7 +101,7 @@ class WD_Protection_Firewall {
     // Known scanner signatures and hacking utilities.
     $bad_bots = array(
       'sqlmap', 'nikto', 'netsparker', 'dirbuster', 'nmap',
-      'absinthe', 'masscan', 'havij', 'w3af', 'zgrab'
+      'absinthe', 'masscan', 'havij', 'w3af', 'zgrab',
     );
 
     foreach ($bad_bots as $bot) {
@@ -128,7 +128,7 @@ class WD_Protection_Firewall {
    * @param string $ip Client IP address.
    */
   private function check_request_payload($ip) {
-    $raw_uri    = isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '';
+    $raw_uri     = isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '';
     $request_uri = urldecode($raw_uri);
 
     if (empty($request_uri)) {
@@ -142,7 +142,7 @@ class WD_Protection_Firewall {
       '/\.\.\/\.\.\//',
       '/<script.*?>/i',
       '/GLOBALS\s*=\s*\[/i',
-      '/_REQUEST\s*=\s*\[/i'
+      '/_REQUEST\s*=\s*\[/i',
     );
 
     foreach ($dangerous_patterns as $pattern) {

@@ -9,7 +9,7 @@ if (!defined('ABSPATH')) {
   exit;
 }
 
-class WD_Protection_Entry_Points {
+class WebDmitriev_Protection_Entry_Points {
 
   /**
    * Maximum allowed login attempts before lockout.
@@ -57,7 +57,7 @@ class WD_Protection_Entry_Points {
 
     if (false !== strpos($request_uri, 'xmlrpc.php')) {
       $ip = $this->get_ip_address();
-      
+
       WebDmitriev_Protection::log_event(
         'xmlrpc_blocked',
         'Attempted request to xmlrpc.php',
@@ -79,8 +79,8 @@ class WD_Protection_Entry_Points {
    * @param string $username Username or email attempted.
    */
   public function handle_failed_login($username) {
-    $ip = $this->get_ip_address();
-    $transient_key = 'wd_login_attempts_' . md5($ip);
+    $ip            = $this->get_ip_address();
+    $transient_key = 'webdmitriev_protection_login_attempts_' . md5($ip);
 
     $attempts = get_transient($transient_key);
     $attempts = $attempts ? $attempts + 1 : 1;
@@ -127,13 +127,13 @@ class WD_Protection_Entry_Points {
       return $user;
     }
 
-    $ip = $this->get_ip_address();
-    $transient_key = 'wd_login_attempts_' . md5($ip);
-    $attempts = get_transient($transient_key);
+    $ip            = $this->get_ip_address();
+    $transient_key = 'webdmitriev_protection_login_attempts_' . md5($ip);
+    $attempts      = get_transient($transient_key);
 
     if ($attempts && $attempts >= $this->max_attempts) {
       return new WP_Error(
-        'wd_ip_blocked',
+        'webdmitriev_protection_ip_blocked',
         sprintf(
           '<strong>%1$s</strong>: %2$s',
           esc_html__('ERROR', 'webdmitriev-protection'),
@@ -150,20 +150,23 @@ class WD_Protection_Entry_Points {
    */
   public function block_user_enumeration() {
     if (!is_admin() && isset($_GET['author'])) {
-      $ip = $this->get_ip_address();
+      $author = sanitize_text_field(wp_unslash($_GET['author']));
+      if (!empty($author)) {
+        $ip = $this->get_ip_address();
 
-      WebDmitriev_Protection::log_event(
-        'user_scan_blocked',
-        'Blocked user enumeration attempt via ?author= query',
-        $ip,
-        'warning'
-      );
+        WebDmitriev_Protection::log_event(
+          'user_scan_blocked',
+          'Blocked user enumeration attempt via ?author= query',
+          $ip,
+          'warning'
+        );
 
-      wp_die(
-        esc_html__('User enumeration scanning is strictly forbidden.', 'webdmitriev-protection'),
-        esc_html__('Forbidden', 'webdmitriev-protection'),
-        array('response' => 403)
-      );
+        wp_die(
+          esc_html__('User enumeration scanning is strictly forbidden.', 'webdmitriev-protection'),
+          esc_html__('Forbidden', 'webdmitriev-protection'),
+          array('response' => 403)
+        );
+      }
     }
   }
 

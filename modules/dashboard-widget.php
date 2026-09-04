@@ -9,7 +9,7 @@ if (!defined('ABSPATH')) {
   exit;
 }
 
-class WD_Protection_Dashboard_Widget {
+class WebDmitriev_Protection_Dashboard_Widget {
 
   public function __construct() {
     add_action('wp_dashboard_setup', array($this, 'add_dashboard_widget'));
@@ -24,7 +24,7 @@ class WD_Protection_Dashboard_Widget {
     }
 
     wp_add_dashboard_widget(
-      'wd_protection_logs_widget',
+      'webdmitriev_protection_logs_widget',
       __('Security Log & System Status', 'webdmitriev-protection'),
       array($this, 'render_dashboard_widget')
     );
@@ -84,8 +84,8 @@ class WD_Protection_Dashboard_Widget {
    */
   private function render_status_badges() {
     // Check if any critical file modifications were flagged
-    $is_wp_config_modified  = get_option('wd_prot_modified_wp_config', false);
-    $is_htaccess_modified   = get_option('wd_prot_modified_root_htaccess', false);
+    $is_wp_config_modified = get_option('webdmitriev_protection_modified_wp_config', false);
+    $is_htaccess_modified  = get_option('webdmitriev_protection_modified_root_htaccess', false);
 
     $integrity_ok = !$is_wp_config_modified && !$is_htaccess_modified;
 
@@ -127,7 +127,7 @@ class WD_Protection_Dashboard_Widget {
   private function get_recent_logs($limit = 5) {
     global $wpdb;
 
-    $table_name = $wpdb->prefix . 'wd_protection_logs';
+    $table_name = $wpdb->base_prefix . 'webdmitriev_protection_logs';
 
     if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table_name)) !== $table_name) {
       return array();
